@@ -52,6 +52,9 @@
     els.shortcut = document.getElementById("shortcut-hint");
     els.results = document.getElementById("results");
 
+    bindEvents();
+    scheduleSearchFocus();
+
     await loadPopupSettings();
     syncPopupMaxHeight();
     window.addEventListener("resize", syncPopupMaxHeight);
@@ -59,13 +62,8 @@
 
     await loadPopupState();
     await loadShortcutHint();
-    bindEvents();
     await refreshData();
-
-    requestAnimationFrame(() => {
-      els.input.focus();
-      els.input.select();
-    });
+    scheduleSearchFocus();
   }
 
   function bindEvents() {
@@ -74,27 +72,8 @@
       render();
     });
 
-    els.input.addEventListener("keydown", async (event) => {
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        moveSelection(1);
-      } else if (event.key === "ArrowUp") {
-        event.preventDefault();
-        moveSelection(-1);
-      } else if (event.key === "Enter") {
-        event.preventDefault();
-        await activateSelected();
-      } else if (event.key === "Escape") {
-        event.preventDefault();
-        closePopup();
-      } else if (event.key === "Delete" || event.key === "Backspace") {
-        const selected = getSelectedItem();
-        if (selected && selected.type === "open" && els.input.value === "") {
-          event.preventDefault();
-          await closeOpenTab(selected);
-        }
-      }
-    });
+    els.input.addEventListener("keydown", handleSearchKeyDown);
+    document.addEventListener("keydown", handleDocumentKeyDown);
 
     els.results.addEventListener("click", async (event) => {
       const closeButton = event.target.closest("[data-close-tab]");
@@ -136,6 +115,85 @@
       api.tabGroups?.onRemoved?.addListener(scheduleRefresh);
       api.tabGroups?.onMoved?.addListener(scheduleRefresh);
     }
+  }
+
+  async function handleSearchKeyDown(event) {
+    if (event.isComposing) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveSelection(1);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveSelection(-1);
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      await activateSelected();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      closePopup();
+    } else if (event.key === "Delete" || event.key === "Backspace") {
+      const selected = getSelectedItem();
+      if (selected && selected.type === "open" && els.input.value === "") {
+        event.preventDefault();
+        await closeOpenTab(selected);
+      }
+    }
+  }
+
+  async function handleDocumentKeyDown(event) {
+    if (event.defaultPrevented || event.isComposing || event.target === els.input || isEditableTarget(event.target)) return;
+
+    if (event.key.length === 1 && !hasCommandModifier(event)) {
+      if (!isInteractiveTarget(event.target)) focusSearchInput();
+      return;
+    }
+
+    if (hasCommandModifier(event)) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveSelection(1);
+      focusSearchInput();
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveSelection(-1);
+      focusSearchInput();
+    } else if (event.key === "Enter" && !isInteractiveTarget(event.target)) {
+      event.preventDefault();
+      await activateSelected();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      closePopup();
+    }
+  }
+
+  function scheduleSearchFocus() {
+    focusSearchInput();
+    requestAnimationFrame(focusSearchInput);
+    setTimeout(focusSearchInput, 75);
+  }
+
+  function focusSearchInput() {
+    if (!els.input) return;
+    try {
+      els.input.focus({ preventScroll: true });
+    } catch {
+      els.input.focus();
+    }
+  }
+
+  function hasCommandModifier(event) {
+    return event.altKey || event.ctrlKey || event.metaKey;
+  }
+
+  function isEditableTarget(target) {
+    if (!(target instanceof HTMLElement)) return false;
+    return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+  }
+
+  function isInteractiveTarget(target) {
+    return target instanceof Element && Boolean(target.closest("button, a, input, textarea, select, [role='button']"));
   }
 
   async function loadPopupState() {
