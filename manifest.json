@@ -1,0 +1,48 @@
+{
+  "manifest_version": 2,
+  "name": "Tab Search Plus",
+  "version": "1.0.0",
+  "description": "Chrome-style tab search for Firefox with tab switching, tab closing, recently closed restore, and tab group indicators.",
+  "icons": {
+    "48": "icons/tab-search-plus.svg",
+    "128": "icons/tab-search-plus.svg"
+  },
+  "permissions": [
+    "tabs",
+    "sessions",
+    "storage",
+    "tabGroups"
+  ],
+  "browser_action": {
+    "default_title": "Search Tabs",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "icons/tab-search-plus.svg",
+      "128": "icons/tab-search-plus.svg"
+    }
+  },
+  "commands": {
+    "_execute_browser_action": {
+      "suggested_key": {
+        "default": "Ctrl+Alt+A",
+        "mac": "Command+MacCtrl+A"
+      },
+      "description": "Open Tab Search"
+    }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "browser_style": true
+  },
+  "content_security_policy": "script-src 'self'; object-src 'self'; img-src 'self' data: http: https: moz-anno: chrome:;",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "tab-search-plus@zihaod.dev",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search Tabs</title>
+  <link rel="icon" href="icons/tab-search-plus.svg">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="tab-search-panel" aria-label="Search Tabs">
+    <header class="search-header">
+      <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m21 21-4.35-4.35m2.1-5.15a7.25 7.25 0 1 1-14.5 0 7.25 7.25 0 0 1 14.5 0Z"/>
+      </svg>
+      <input id="search-input" type="search" autocomplete="off" spellcheck="false" placeholder="Search Tabs" aria-label="Search tabs">
+      <span id="shortcut-hint" class="shortcut-hint" aria-hidden="true"></span>
+    </header>
+
+    <section id="results" class="results" role="listbox" aria-label="Tab search results">
+      <div class="loading-state">Loading tabs...</div>
+    </section>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>
