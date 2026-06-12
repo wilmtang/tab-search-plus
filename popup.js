@@ -1,6 +1,7 @@
 (function () {
   const OPEN_COMMAND = "_execute_browser_action";
   const RECENTLY_CLOSED_LIMIT = 25;
+  const RECENTLY_CLOSED_DISPLAY_LIMIT = 8;
   const POPUP_MAX_WIDTH = 800;
   const POPUP_MIN_WIDTH = 280;
   const POPUP_DEFAULT_WIDTH = 320;
@@ -30,6 +31,11 @@
     cyan: "#78d7ff",
     orange: "#fcad70"
   };
+  const searchFields = [
+    { key: "title", weight: 2 },
+    { key: "hostname", weight: 1 },
+    { key: "groupName", weight: 1.5 }
+  ];
 
   const state = {
     query: "",
@@ -120,12 +126,10 @@
   async function handleSearchKeyDown(event) {
     if (event.isComposing) return;
 
-    if (event.key === "ArrowDown") {
+    const navigationDirection = getNavigationDirection(event);
+    if (navigationDirection !== 0) {
       event.preventDefault();
-      moveSelection(1);
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      moveSelection(-1);
+      moveSelection(navigationDirection);
     } else if (event.key === "Enter") {
       event.preventDefault();
       await activateSelected();
@@ -144,6 +148,14 @@
   async function handleDocumentKeyDown(event) {
     if (event.defaultPrevented || event.isComposing || event.target === els.input || isEditableTarget(event.target)) return;
 
+    const navigationDirection = getNavigationDirection(event);
+    if (navigationDirection !== 0) {
+      event.preventDefault();
+      moveSelection(navigationDirection);
+      focusSearchInput();
+      return;
+    }
+
     if (event.key.length === 1 && !hasCommandModifier(event)) {
       if (!isInteractiveTarget(event.target)) focusSearchInput();
       return;
@@ -151,21 +163,25 @@
 
     if (hasCommandModifier(event)) return;
 
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      moveSelection(1);
-      focusSearchInput();
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      moveSelection(-1);
-      focusSearchInput();
-    } else if (event.key === "Enter" && !isInteractiveTarget(event.target)) {
+    if (event.key === "Enter" && !isInteractiveTarget(event.target)) {
       event.preventDefault();
       await activateSelected();
     } else if (event.key === "Escape") {
       event.preventDefault();
       closePopup();
     }
+  }
+
+  function getNavigationDirection(event) {
+    if (event.key === "ArrowDown") return 1;
+    if (event.key === "ArrowUp") return -1;
+
+    if (!isMac() || !event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return 0;
+
+    const key = event.key.toLocaleLowerCase();
+    if (key === "n") return 1;
+    if (key === "p") return -1;
+    return 0;
   }
 
   function scheduleSearchFocus() {
@@ -287,10 +303,11 @@
 
       const groups = await getGroupMap(openTabs);
 
-      state.openTabs = openTabs
+      const normalizedOpenTabs = openTabs
         .map((tab) => normalizeOpenTab(tab, groups.get(tab.groupId)))
         .sort(sortOpenTabs);
-      state.closedItems = normalizeClosedSessions(recentlyClosed);
+      state.openTabs = normalizedOpenTabs;
+      state.closedItems = normalizeClosedSessions(recentlyClosed, normalizedOpenTabs);
 
       render();
     } catch (error) {
@@ -320,6 +337,7 @@
   function normalizeOpenTab(tab, group) {
     const title = tab.title || displayUrl(tab.url) || "Untitled";
     const url = tab.url || "";
+    const hostname = displayUrl(url);
     const groupName = group?.title || "";
     const groupColor = groupColorMap[group?.color] || groupColorMap.grey;
 
@@ -334,106 +352,120 @@
       muted: Boolean(tab.mutedInfo?.muted),
       title,
       url,
-      displayUrl: displayUrl(url),
+      hostname,
+      displayUrl: hostname,
       favIconUrl: tab.favIconUrl || "",
       lastTime: tab.lastAccessed || Date.now(),
       hasGroup: tab.groupId !== undefined && tab.groupId !== NO_GROUP,
       groupName,
       groupColor,
       groupId: tab.groupId,
-      windowFocused: Boolean(tab.windowFocused),
-      searchText: normalizeSearchText([title, url, groupName])
+      windowFocused: Boolean(tab.windowFocused)
     };
   }
 
-  function normalizeClosedSessions(sessions) {
+  function normalizeClosedSessions(sessions, openTabs = []) {
     const items = [];
+    const seenUrls = new Set(openTabs.map((tab) => normalizeUrlKey(tab.url)).filter(Boolean));
 
     sessions.forEach((session, index) => {
       if (session.tab) {
         const tab = session.tab;
-        items.push(normalizeClosedTab(tab, session.lastModified, tab.sessionId, index));
+        appendClosedTab(items, seenUrls, tab, session.lastModified, tab.sessionId, index);
       } else if (session.window) {
         const sessionWindow = session.window;
         const tabs = sessionWindow.tabs || [];
-        const sessionId = sessionWindow.sessionId;
-        const representative = tabs.find((tab) => tab.title || tab.url) || tabs[0];
-
-        if (tabs.length <= 1 && representative) {
-          items.push(normalizeClosedTab(representative, session.lastModified, sessionId || representative.sessionId, index, "window"));
-        } else if (tabs.length > 1) {
-          const allText = tabs.flatMap((tab) => [tab.title || "", tab.url || ""]);
-          const hostSummary = representative ? displayUrl(representative.url) : "";
-          items.push({
-            id: `closed-window-${sessionId || index}`,
-            type: "closed",
-            restoreType: "window",
-            sessionId,
-            title: `Window with ${tabs.length} tabs`,
-            url: representative?.url || "",
-            displayUrl: hostSummary ? `${hostSummary} and ${Math.max(tabs.length - 1, 0)} more` : `${tabs.length} tabs`,
-            favIconUrl: representative?.favIconUrl || "",
-            lastTime: session.lastModified || Date.now(),
-            searchText: normalizeSearchText([`window with ${tabs.length} tabs`, ...allText])
-          });
-        }
+        tabs.forEach((tab, tabIndex) => {
+          appendClosedTab(items, seenUrls, tab, session.lastModified, tab.sessionId, `${index}-${tabIndex}`);
+        });
       }
     });
 
-    return items;
+    return items.sort((a, b) => b.lastTime - a.lastTime);
   }
 
-  function normalizeClosedTab(tab, lastModified, sessionId, index, restoreType = "tab") {
+  function appendClosedTab(items, seenUrls, tab, lastModified, sessionId, index) {
+    if (!tab || !isRestorableClosedUrl(tab.url)) return;
+
+    const urlKey = normalizeUrlKey(tab.url);
+    if (!urlKey || seenUrls.has(urlKey)) return;
+
+    seenUrls.add(urlKey);
+    items.push(normalizeClosedTab(tab, lastModified, sessionId, index));
+  }
+
+  function normalizeClosedTab(tab, lastModified, sessionId, index) {
     const title = tab.title || displayUrl(tab.url) || "Untitled";
     const url = tab.url || "";
+    const hostname = displayUrl(url);
 
     return {
       id: `closed-${sessionId || index}`,
       type: "closed",
-      restoreType,
+      restoreType: "tab",
       sessionId,
       title,
       url,
-      displayUrl: displayUrl(url),
+      hostname,
+      displayUrl: hostname,
       favIconUrl: tab.favIconUrl || "",
-      lastTime: lastModified || Date.now(),
-      searchText: normalizeSearchText([title, url])
+      lastTime: lastModified || Date.now()
     };
   }
 
   function sortOpenTabs(a, b) {
-    if (a.active !== b.active) return a.active ? -1 : 1;
-    if (a.windowFocused !== b.windowFocused) return a.windowFocused ? -1 : 1;
+    const aCurrent = a.active && a.windowFocused;
+    const bCurrent = b.active && b.windowFocused;
+    if (aCurrent !== bCurrent) return aCurrent ? 1 : -1;
     if (a.lastTime !== b.lastTime) return b.lastTime - a.lastTime;
     return a.title.localeCompare(b.title);
   }
 
   function render() {
-    const query = normalizeQuery(state.query);
-    const openItems = state.openTabs.filter((item) => matchesQuery(item, query));
-    const closedItems = state.closedItems.filter((item) => matchesQuery(item, query));
-    const visible = [...openItems, ...(state.recentlyClosedExpanded ? closedItems : [])];
+    const query = state.query.trim();
+    const isSearching = query !== "";
+    const openMatches = searchItems(query, state.openTabs);
+    const closedMatches = searchItems(query, state.closedItems);
+    const mediaItems = isSearching ? [] : openMatches.filter(isMediaItem);
+    const openItems = isSearching ? openMatches : openMatches.filter((item) => !isMediaItem(item));
+    const closedItems = isSearching ? closedMatches : closedMatches.slice(0, RECENTLY_CLOSED_DISPLAY_LIMIT);
+    const visibleOpenItems = isSearching ? openItems : [...mediaItems, ...openItems];
+    const visible = [...visibleOpenItems, ...(state.recentlyClosedExpanded ? closedItems : [])];
 
     if (!visible.some((item) => item.id === state.selectedId)) {
-      state.selectedId = visible[0]?.id || "";
+      state.selectedId = getDefaultSelectedId(openMatches, visible);
     }
 
     state.visibleItems = visible;
     els.results.textContent = "";
 
-    if (openItems.length > 0 || state.query === "") {
+    if (mediaItems.length > 0) {
+      els.results.appendChild(createSection("Audio & Video", mediaItems));
+    }
+
+    if (openItems.length > 0) {
       els.results.appendChild(createSection("Open Tabs", openItems));
     }
 
-    if (closedItems.length > 0 || state.query === "") {
+    if (closedItems.length > 0) {
       els.results.appendChild(createClosedSection(closedItems));
     }
 
-    if (openItems.length === 0 && closedItems.length === 0) {
-      els.results.appendChild(createEmptyState(state.query ? "No tabs found" : "No tabs to show"));
+    if (openMatches.length === 0 && closedMatches.length === 0) {
+      els.results.appendChild(createEmptyState("No Results Found"));
     }
 
     renderSelection();
+  }
+
+  function isMediaItem(item) {
+    return item.type === "open" && (item.audible || item.muted);
+  }
+
+  function getDefaultSelectedId(openItems, visibleItems) {
+    const visibleIds = new Set(visibleItems.map((item) => item.id));
+    const firstOpenItem = openItems.find((item) => visibleIds.has(item.id));
+    return firstOpenItem?.id || visibleItems[0]?.id || "";
   }
 
   function createSection(title, items) {
@@ -497,7 +529,16 @@
 
     const title = document.createElement("div");
     title.className = "tab-title";
-    title.textContent = item.title;
+
+    const titleText = document.createElement("span");
+    titleText.className = "tab-title-text";
+    appendHighlightedText(titleText, item.title, item.highlightRanges?.title);
+    title.appendChild(titleText);
+
+    if (isMediaItem(item)) {
+      title.appendChild(createMediaIndicatorIcon(item.muted));
+    }
+
     copy.appendChild(title);
 
     copy.appendChild(createMeta(item));
@@ -557,7 +598,7 @@
       if (item.groupName) {
         const name = document.createElement("span");
         name.className = "group-name";
-        name.textContent = item.groupName;
+        appendHighlightedText(name, item.groupName, item.highlightRanges?.groupName);
         chip.appendChild(name);
       }
 
@@ -567,7 +608,7 @@
 
     const url = document.createElement("span");
     url.className = "meta-text";
-    url.textContent = item.displayUrl || "Unknown";
+    appendHighlightedText(url, item.hostname || item.displayUrl || "Unknown", item.highlightRanges?.hostname);
     meta.appendChild(url);
 
     const time = formatTimeAgo(item.lastTime);
@@ -592,6 +633,41 @@
     button.dataset.closeTab = item.id;
     button.appendChild(createCloseIcon());
     return button;
+  }
+
+  function appendHighlightedText(element, text, ranges = []) {
+    const value = text || "";
+    element.textContent = "";
+
+    if (ranges.length === 0) {
+      element.appendChild(document.createTextNode(value));
+      return;
+    }
+
+    let cursor = 0;
+    ranges
+      .map((range) => ({
+        start: clampNumber(range.start, 0, value.length, 0),
+        end: clampNumber(range.end, 0, value.length, 0)
+      }))
+      .filter((range) => range.end > range.start)
+      .sort((a, b) => a.start - b.start || a.end - b.end)
+      .forEach((range) => {
+        if (range.start < cursor) return;
+        if (range.start > cursor) {
+          element.appendChild(document.createTextNode(value.slice(cursor, range.start)));
+        }
+
+        const hit = document.createElement("span");
+        hit.className = "search-highlight-hit";
+        hit.textContent = value.slice(range.start, range.end);
+        element.appendChild(hit);
+        cursor = range.end;
+      });
+
+    if (cursor < value.length) {
+      element.appendChild(document.createTextNode(value.slice(cursor)));
+    }
   }
 
   function createSeparator() {
@@ -705,17 +781,126 @@
     return state.visibleItems.find((item) => item.id === id);
   }
 
-  function matchesQuery(item, query) {
-    if (!query) return true;
-    return item.searchText.includes(query);
+  function searchItems(query, items) {
+    const trimmedQuery = query.trim();
+    if (!trimmedQuery) {
+      return items.map((item) => ({
+        ...item,
+        highlightRanges: createEmptyHighlightRanges()
+      }));
+    }
+
+    const normalizedQuery = normalizeSearchString(trimmedQuery);
+    const matches = items
+      .map((item, index) => {
+        const highlightRanges = createEmptyHighlightRanges();
+        let score = 0;
+        let hasMatch = false;
+
+        searchFields.forEach(({ key, weight }) => {
+          const ranges = getRanges(item[key], normalizedQuery);
+          highlightRanges[key] = ranges;
+          if (ranges.length === 0) return;
+
+          hasMatch = true;
+          score += ranges.reduce((total, range) => {
+            return total + Math.max((200 - range.start) / 200, 0) * weight;
+          }, 0);
+        });
+
+        if (!hasMatch) return null;
+
+        return {
+          ...item,
+          highlightRanges,
+          searchScore: score,
+          searchIndex: index
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.searchScore - a.searchScore || a.searchIndex - b.searchIndex);
+
+    return prioritizeMatchResults(matches, normalizedQuery).map(({ searchScore, searchIndex, ...item }) => item);
   }
 
-  function normalizeQuery(query) {
-    return query.trim().toLocaleLowerCase();
+  function getRanges(text, normalizedQuery) {
+    const value = normalizeSearchString(text || "");
+    if (!value || !normalizedQuery) return [];
+
+    const regex = new RegExp(escapeRegExp(normalizedQuery), "gi");
+    const ranges = [];
+    let match = regex.exec(value);
+    while (match) {
+      ranges.push({
+        start: match.index,
+        end: match.index + match[0].length
+      });
+      match = regex.exec(value);
+    }
+
+    return ranges;
   }
 
-  function normalizeSearchText(parts) {
-    return parts.filter(Boolean).join(" ").toLocaleLowerCase();
+  function prioritizeMatchResults(items, normalizedQuery) {
+    const prefixMatches = [];
+    const wordBoundaryMatches = [];
+    const otherMatches = [];
+
+    items.forEach((item) => {
+      if (hasPrefixMatch(item, normalizedQuery)) {
+        prefixMatches.push(item);
+      } else if (hasWordBoundaryMatch(item, normalizedQuery)) {
+        wordBoundaryMatches.push(item);
+      } else {
+        otherMatches.push(item);
+      }
+    });
+
+    return [...prefixMatches, ...wordBoundaryMatches, ...otherMatches];
+  }
+
+  function hasPrefixMatch(item, normalizedQuery) {
+    return searchFields.some(({ key }) => normalizeSearchString(item[key] || "").startsWith(normalizedQuery));
+  }
+
+  function hasWordBoundaryMatch(item, normalizedQuery) {
+    const regex = new RegExp(`\\b${escapeRegExp(normalizedQuery)}`, "i");
+    return searchFields.some(({ key }) => regex.test(normalizeSearchString(item[key] || "")));
+  }
+
+  function createEmptyHighlightRanges() {
+    return {
+      title: [],
+      hostname: [],
+      groupName: []
+    };
+  }
+
+  function normalizeSearchString(value) {
+    return String(value)
+      .replace(/[‘’]/g, "'")
+      .replace(/[“”]/g, "\"");
+  }
+
+  function escapeRegExp(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function normalizeUrlKey(url) {
+    if (!url) return "";
+
+    try {
+      return new URL(url).href;
+    } catch {
+      return "";
+    }
+  }
+
+  function isRestorableClosedUrl(url) {
+    const urlKey = normalizeUrlKey(url);
+    if (!urlKey) return false;
+
+    return !["about:newtab", "about:home", "about:blank"].includes(urlKey.replace(/\/$/, ""));
   }
 
   function displayUrl(url) {
@@ -783,6 +968,20 @@
     };
   }
 
+  function createMediaIndicatorIcon(isMuted) {
+    const svg = createSvg("0 0 24 24");
+    svg.classList.add("media-alert-icon");
+    appendPath(svg, "M4 9v6h4l5 4V5L8 9H4Z");
+
+    if (isMuted) {
+      appendPath(svg, "m17 9 4 4m0-4-4 4");
+    } else {
+      appendPath(svg, "M16 8.5a4.5 4.5 0 0 1 0 7M18.5 6a8 8 0 0 1 0 12");
+    }
+
+    return svg;
+  }
+
   function createCloseIcon() {
     const svg = createSvg("0 0 24 24");
     appendPath(svg, "M18 6 6 18M6 6l12 12");
@@ -842,68 +1041,148 @@
     const now = Date.now();
     const mockTabCount = clampNumber(
       new URLSearchParams(location.search).get("mockTabs"),
-      4,
+      10,
       80,
-      4
+      10
     );
     const openTabs = [
-      mockOpen(1, "New Tab", "about:newtab", "blue", "asdf...", now - 2 * 60 * 1000, true),
-      mockOpen(2, "wilmtang (Zod D)", "https://github.com/wilmtang/zod-discriminated", "", "", now - 2 * 60 * 1000),
-      mockOpen(3, "New Tab", "about:newtab", "", "", now - 2 * 60 * 1000),
-      mockOpen(4, "New Tab", "about:newtab", "blue", "asdfa...", now - 2 * 60 * 1000)
+      mockOpen(1, "Chrome Tab Search popup.js", "https://github.com/zihaod/chrome-tab-search/blob/main/popup.js", {
+        colorName: "blue",
+        groupName: "Work",
+        lastTime: now - 15 * 1000,
+        active: true
+      }),
+      mockOpen(2, "Design Critique - Live Stream", "https://www.youtube.com/watch?v=tab-search", {
+        colorName: "orange",
+        groupName: "Media",
+        lastTime: now - 30 * 1000,
+        audible: true
+      }),
+      mockOpen(3, "Chrome search.ts - Chromium Code Search", "https://chromium.googlesource.com/chromium/src/+/main/chrome/browser/resources/tab_search/search.ts", {
+        lastTime: now - 45 * 1000
+      }),
+      mockOpen(4, "Focus playlist - muted", "https://music.example.com/focus/playlist", {
+        colorName: "green",
+        groupName: "Audio",
+        lastTime: now - 2 * 60 * 1000,
+        muted: true
+      }),
+      mockOpen(5, "Chrome Tab Search parity plan", "https://github.com/zihaod/chrome-tab-search/pull/12", {
+        colorName: "purple",
+        groupName: "Work",
+        lastTime: now - 4 * 60 * 1000
+      }),
+      mockOpen(6, "MDN tabs.query() - WebExtensions", "https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/query", {
+        colorName: "cyan",
+        groupName: "Docs",
+        lastTime: now - 7 * 60 * 1000
+      }),
+      mockOpen(7, "Smart quotes ‘ranking’ “highlight” demo", "https://quotes.example.com/smart-ranking", {
+        lastTime: now - 9 * 60 * 1000
+      }),
+      mockOpen(8, "Prefix match report", "https://docs.example.com/prefix-match", {
+        lastTime: now - 12 * 60 * 1000
+      }),
+      mockOpen(9, "Word boundary report", "https://docs.example.com/report-word", {
+        lastTime: now - 13 * 60 * 1000
+      }),
+      mockOpen(10, "New Tab", "about:newtab", {
+        lastTime: now - 20 * 60 * 1000
+      })
     ];
 
-    for (let id = 5; id <= mockTabCount; id += 1) {
+    for (let id = 11; id <= mockTabCount; id += 1) {
       const minutesAgo = id < 18 ? 1 : 8;
-      openTabs.push(mockOpen(id, "New Tab", "about:newtab", "", "", now - minutesAgo * 60 * 1000));
+      openTabs.push(mockOpen(id, `Background research ${id}`, `https://example.com/background/${id}`, {
+        lastTime: now - minutesAgo * 60 * 1000
+      }));
     }
 
+    const sortedOpenTabs = openTabs.sort(sortOpenTabs);
+    const closedSessions = [
+      mockClosedTab(20, "Duplicate open Chromium search.ts", "https://chromium.googlesource.com/chromium/src/+/main/chrome/browser/resources/tab_search/search.ts", now - 5 * 60 * 1000),
+      mockClosedTab(21, "Chrome Tab Search review notes", "https://github.com/zihaod/chrome-tab-search/pull/12/files", now - 6 * 60 * 1000),
+      mockClosedWindow(22, [
+        mockSessionTab(221, "Prefix ranking from closed window", "https://example.com/prefix-ranking"),
+        mockSessionTab(222, "Word boundary ranking", "https://example.com/docs/boundary-ranking"),
+        mockSessionTab(223, "Duplicate open parity plan", "https://github.com/zihaod/chrome-tab-search/pull/12"),
+        mockSessionTab(224, "Closed New Tab", "about:newtab")
+      ], now - 8 * 60 * 1000),
+      mockClosedTab(23, "Smart quote “closed” result", "https://quotes.example.com/closed", now - 11 * 60 * 1000),
+      mockClosedTab(24, "Audio recording notes", "https://media.example.com/recording", now - 16 * 60 * 1000),
+      mockClosedTab(25, "Release checklist", "https://example.com/release-checklist", now - 21 * 60 * 1000),
+      mockClosedTab(26, "Firefox sessions API", "https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/sessions", now - 26 * 60 * 1000),
+      mockClosedTab(27, "Chrome Web Store dashboard", "https://chrome.google.com/webstore/devconsole", now - 31 * 60 * 1000),
+      mockClosedTab(28, "Duplicate closed dashboard", "https://chrome.google.com/webstore/devconsole", now - 36 * 60 * 1000),
+      mockClosedTab(29, "Options page QA", "moz-extension://example/options.html", now - 41 * 60 * 1000),
+      mockClosedTab(30, "Invalid closed URL", "not a url", now - 46 * 60 * 1000),
+      mockClosedTab(31, "Search ranking design", "https://example.com/search-ranking-design", now - 51 * 60 * 1000),
+      mockClosedTab(32, "Window restore details", "https://example.com/window-restore-details", now - 56 * 60 * 1000)
+    ];
+
     return {
-      openTabs,
-      closedItems: [
-        mockClosed(20, "Status", "https://chrome.google.com/webstore/devconsole/status", "pink", now - 11 * 60 * 1000),
-        mockClosed(21, "Audience - Google Auth Platform - Chrome Web Store", "https://console.cloud.google.com/apis/credentials", "pink", now - 11 * 60 * 1000),
-        mockClosed(22, "Store Listing", "https://chrome.google.com/webstore/devconsole/store-listing", "", now - 11 * 60 * 1000),
-        mockClosed(23, "Chrome Extension - Workflow runs", "https://github.com/zihaod/chrome-extension/actions", "", now - 38 * 60 * 1000),
-        mockClosed(24, "LeetCode VS Code Auth Sync - Chrome Web Store", "https://chromewebstore.google.com/detail/leetcode-vs-code-auth-sync", "pink", now - 39 * 60 * 1000),
-        mockClosed(25, "vscode-leetcode/PRIVACY.md at main", "https://github.com/zihaod/vscode-leetcode/blob/main/PRIVACY.md", "", now - 50 * 60 * 1000)
-      ]
+      openTabs: sortedOpenTabs,
+      closedItems: normalizeClosedSessions(closedSessions, sortedOpenTabs)
     };
   }
 
-  function mockOpen(id, title, url, colorName, groupName, lastTime, active = false) {
+  function mockOpen(id, title, url, options = {}) {
+    const hostname = displayUrl(url);
+    const groupColor = options.colorName ? groupColorMap[options.colorName] : groupColorMap.grey;
+
     return {
       id: `open-${id}`,
       type: "open",
       tabId: id,
       windowId: 1,
-      active,
-      pinned: false,
+      active: Boolean(options.active),
+      pinned: Boolean(options.pinned),
+      audible: Boolean(options.audible),
+      muted: Boolean(options.muted),
       title,
       url,
-      displayUrl: displayUrl(url),
-      favIconUrl: url.includes("github") ? "https://github.githubassets.com/favicons/favicon.svg" : "",
-      lastTime,
-      groupName,
-      groupColor: colorName ? groupColorMap[colorName] : "",
-      searchText: normalizeSearchText([title, url, groupName])
+      hostname,
+      displayUrl: hostname,
+      favIconUrl: mockFavicon(url),
+      lastTime: options.lastTime || Date.now(),
+      hasGroup: Boolean(options.colorName || options.groupName),
+      groupName: options.groupName || "",
+      groupColor,
+      groupId: options.colorName || options.groupName ? id : NO_GROUP,
+      windowFocused: options.windowFocused !== false
     };
   }
 
-  function mockClosed(id, title, url, colorName, lastTime) {
+  function mockClosedTab(id, title, url, lastTime) {
     return {
-      id: `closed-${id}`,
-      type: "closed",
-      restoreType: "tab",
+      tab: mockSessionTab(id, title, url),
+      lastModified: lastTime
+    };
+  }
+
+  function mockClosedWindow(id, tabs, lastTime) {
+    return {
+      window: {
+        sessionId: `window-${id}`,
+        tabs
+      },
+      lastModified: lastTime
+    };
+  }
+
+  function mockSessionTab(id, title, url) {
+    return {
       sessionId: String(id),
       title,
       url,
-      displayUrl: displayUrl(url),
-      favIconUrl: url.includes("github") ? "https://github.githubassets.com/favicons/favicon.svg" : "",
-      lastTime,
-      groupName: colorName ? "Co..." : "",
-      groupColor: colorName ? groupColorMap[colorName] : "",
-      searchText: normalizeSearchText([title, url])
+      favIconUrl: mockFavicon(url)
     };
+  }
+
+  function mockFavicon(url) {
+    if (url.includes("github.com")) return "https://github.githubassets.com/favicons/favicon.svg";
+    if (url.includes("developer.mozilla.org")) return "https://developer.mozilla.org/favicon-48x48.cbbd161b.png";
+    if (url.includes("youtube.com")) return "https://www.youtube.com/s/desktop/12d6b690/img/favicon_32x32.png";
+    return "";
   }
 })();

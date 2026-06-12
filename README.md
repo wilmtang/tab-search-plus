@@ -17,11 +17,13 @@ The goal is intentionally narrow: make tab search behave like the Chrome feature
 ## Features
 
 - Chrome-style popup with dark-mode support.
-- Search by tab title, URL, and visible tab group name.
-- Open-tab rows sorted by active tab and recent use.
+- Chrome-matched MRU ordering, with the current focused-window tab moved to the bottom so Enter quickly switches to another tab.
+- Chrome-style ranked search across tab title, hostname, and visible tab group name, with bold hit highlighting.
+- Audio & Video section for audible or muted tabs when not searching.
+- Recently Closed parity with flattened closed windows, duplicate filtering, and the same compact display limit Chrome uses.
 - Switch to tabs across normal Firefox windows.
 - Close open tabs from the right-side close button.
-- Restore recently closed tabs and closed windows through Firefox session restore.
+- Restore recently closed tabs through Firefox session restore.
 - Show tab group indicators using Firefox's `tabGroups` API when available.
 - Customizable shortcut from the options page. Default is `Cmd + Ctrl + A` on macOS and `Ctrl + Alt + A` on Windows/Linux.
 

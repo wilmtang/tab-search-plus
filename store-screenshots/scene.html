@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <title>Chrome Tab Search Store Screenshot</title>
+  <link rel="stylesheet" href="../popup.css">
+  <style>
+    :root {
+      color-scheme: only light;
+      --firefox-orange: #ff7139;
+      --firefox-pink: #ff4f8b;
+      --firefox-purple: #7542e5;
+      --ink: #15141a;
+      --page: #f9f9fb;
+      --browser: #ffffff;
+      --browser-line: #dedee6;
+      --address: #f0f0f4;
+      --popup-width: 420px;
+      --popup-scale: 1.08;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 1280px;
+      min-width: 1280px;
+      max-width: 1280px;
+      height: 800px;
+      min-height: 800px;
+      max-height: 800px;
+      margin: 0;
+      overflow: hidden;
+      background: var(--page);
+      color: var(--ink);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      letter-spacing: 0;
+    }
+
+    body {
+      display: grid;
+      place-items: stretch;
+      color-scheme: only light;
+    }
+
+    .shot {
+      position: relative;
+      width: 1280px;
+      height: 800px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 10% 15%, rgba(255, 113, 57, .18), transparent 25%),
+        radial-gradient(circle at 88% 10%, rgba(117, 66, 229, .18), transparent 24%),
+        linear-gradient(135deg, #fff8f3 0%, #f8f9ff 47%, #f4fbff 100%);
+      color-scheme: only light;
+      forced-color-adjust: none;
+    }
+
+    .shot.restore {
+      background:
+        radial-gradient(circle at 18% 14%, rgba(69, 161, 255, .18), transparent 26%),
+        radial-gradient(circle at 92% 85%, rgba(255, 79, 139, .18), transparent 26%),
+        linear-gradient(135deg, #f6fbff 0%, #fff 45%, #fff7fb 100%);
+    }
+
+    .shot.settings {
+      background:
+        radial-gradient(circle at 16% 82%, rgba(255, 113, 57, .18), transparent 26%),
+        radial-gradient(circle at 92% 12%, rgba(117, 66, 229, .18), transparent 24%),
+        linear-gradient(135deg, #fbf8ff 0%, #fff 48%, #fff8f3 100%);
+    }
+
+    .copy {
+      position: absolute;
+      left: 76px;
+      top: 82px;
+      width: 390px;
+      z-index: 3;
+    }
+
+    .settings .copy {
+      width: 430px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      color: #5b5b66;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .eyebrow img {
+      width: 34px;
+      height: 34px;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 58px;
+      font-weight: 780;
+      line-height: .98;
+    }
+
+    .settings h1 {
+      font-size: 52px;
+    }
+
+    .supporting {
+      margin: 22px 0 0;
+      color: #4f4f5a;
+      font-size: 22px;
+      font-weight: 520;
+      line-height: 1.38;
+    }
+
+    .keyline {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 28px;
+      color: #3a3942;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .keyline[hidden] {
+      display: none;
+    }
+
+    .key {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 12px;
+      border: 1px solid rgba(21, 20, 26, .18);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, .72);
+      box-shadow: 0 2px 4px rgba(21, 20, 26, .08);
+      font-size: 15px;
+    }
+
+    .browser-window {
+      position: absolute;
+      right: 54px;
+      bottom: 54px;
+      width: 720px;
+      height: 580px;
+      overflow: hidden;
+      border: 1px solid rgba(21, 20, 26, .11);
+      border-radius: 16px;
+      background: var(--browser);
+      box-shadow: 0 34px 90px rgba(24, 25, 31, .22);
+    }
+
+    .settings .browser-window {
+      right: 62px;
+      bottom: 46px;
+      width: 700px;
+      height: 638px;
+    }
+
+    .window-top {
+      height: 82px;
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--browser-line);
+      background: linear-gradient(#fbfbfe, #f4f4f8);
+    }
+
+    .traffic {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .traffic span {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .traffic span:nth-child(1) {
+      background: #ff5f57;
+    }
+
+    .traffic span:nth-child(2) {
+      background: #ffbd2e;
+    }
+
+    .traffic span:nth-child(3) {
+      background: #28c840;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr 38px;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .address {
+      height: 34px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      border-radius: 999px;
+      background: var(--address);
+      color: #686873;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .extension-button {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: inset 0 0 0 1px rgba(21, 20, 26, .12), 0 4px 10px rgba(21, 20, 26, .09);
+    }
+
+    .extension-button img {
+      width: 24px;
+      height: 24px;
+    }
+
+    .page-fill {
+      height: calc(100% - 82px);
+      padding: 34px;
+      background:
+        linear-gradient(90deg, rgba(117, 66, 229, .08) 0 46%, transparent 46%),
+        repeating-linear-gradient(0deg, rgba(21, 20, 26, .06) 0 1px, transparent 1px 48px),
+        #fff;
+    }
+
+    .fake-card {
+      width: 58%;
+      height: 120px;
+      margin-bottom: 24px;
+      border-radius: 12px;
+      background: rgba(117, 66, 229, .1);
+    }
+
+    .fake-line {
+      height: 15px;
+      margin: 16px 0;
+      border-radius: 999px;
+      background: rgba(21, 20, 26, .11);
+    }
+
+    .fake-line.short {
+      width: 54%;
+    }
+
+    .fake-line.mid {
+      width: 78%;
+    }
+
+    .popup-wrap {
+      position: absolute;
+      right: 92px;
+      top: 142px;
+      z-index: 4;
+      border-radius: 12px;
+      box-shadow: 0 24px 60px rgba(21, 20, 26, .24);
+    }
+
+    .restore .popup-wrap {
+      right: 106px;
+      top: 120px;
+    }
+
+    .tab-search-panel {
+      width: var(--popup-width);
+      max-height: 600px;
+      box-shadow: none;
+    }
+
+    .results {
+      max-height: 550px;
+    }
+
+    .search-header {
+      background: var(--panel-bg);
+    }
+
+    #search-input {
+      pointer-events: none;
+    }
+
+    .row-action.force-visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      background: var(--button-hover);
+    }
+
+    .group-chip {
+      max-width: 116px;
+    }
+
+    .settings-frame {
+      position: absolute;
+      right: 112px;
+      top: 98px;
+      width: 572px;
+      height: 600px;
+      overflow: hidden;
+      border: 1px solid rgba(21, 20, 26, .11);
+      border-radius: 14px;
+      background: #f9f9fb;
+      box-shadow: 0 28px 70px rgba(24, 25, 31, .22);
+    }
+
+    .settings-surface {
+      width: 100%;
+      height: 100%;
+      padding: 34px;
+      background: #f9f9fb;
+    }
+
+    .settings-card {
+      padding: 30px;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
+    }
+
+    .settings-card h2 {
+      margin: 0 0 8px;
+      color: #15141a;
+      font-size: 24px;
+      font-weight: 650;
+    }
+
+    .settings-card p {
+      margin: 0 0 24px;
+      color: #5b5b66;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .field {
+      margin: 0 0 24px;
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 8px;
+      color: #5b5b66;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .shortcut-control {
+      display: grid;
+      grid-template-columns: 1fr 90px;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .shortcut-box {
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 12px;
+      border: 2px solid #ced4da;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      margin-right: 4px;
+      padding: 3px 8px;
+      border: 1px solid #d0d0d7;
+      border-radius: 5px;
+      background: #f0f0f4;
+      box-shadow: 0 1px 1px rgba(0, 0, 0, .06);
+      color: #15141a;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .plus {
+      margin: 0 5px 0 1px;
+      color: #5b5b66;
+      font-size: 13px;
+    }
+
+    .button {
+      display: grid;
+      place-items: center;
+      border: 1px solid #ced4da;
+      border-radius: 8px;
+      background: #f0f0f4;
+      color: #15141a;
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .divider {
+      height: 1px;
+      margin: 28px 0;
+      background: #ced4da;
+    }
+
+    .range-row {
+      display: grid;
+      grid-template-columns: 1fr 84px auto;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .slider {
+      position: relative;
+      height: 20px;
+    }
+
+    .slider::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 8px;
+      height: 4px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #0060df 0 62%, #d7d7db 62% 100%);
+    }
+
+    .slider::after {
+      content: "";
+      position: absolute;
+      left: 62%;
+      top: 1px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #0060df;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .24);
+    }
+
+    .number {
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #ced4da;
+      border-radius: 6px;
+      background: #fff;
+      color: #15141a;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .unit {
+      color: #5b5b66;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .dark-demo {
+      --panel-bg: #202124;
+      --section-bg: #202124;
+      --row-hover: #303134;
+      --row-selected: #3c4043;
+      --row-selected-text: #e8eaed;
+      --text: #e8eaed;
+      --muted: #bdc1c6;
+      --quiet: #9aa0a6;
+      --border: #4a4b4f;
+      --icon-tile: #2b2c2f;
+      --icon-fg: #bdc1c6;
+      --button-hover: rgba(232, 234, 237, .12);
+      --focus-ring: #8ab4f8;
+      --scrollbar: #aecbfa;
+      --scrollbar-track: transparent;
+    }
+  </style>
+</head>
+<body>
+  <section id="shot" class="shot search">
+    <div class="copy">
+      <div class="eyebrow"><img src="../icons/icon-48.png" alt="">Chrome Tab Search for Firefox</div>
+      <h1 id="headline">Find any tab instantly</h1>
+      <p id="supporting" class="supporting">A compact Chrome-style popup for jumping across open Firefox tabs by title, URL, or group.</p>
+      <div id="keyline" class="keyline">
+        <span class="key">Cmd</span>
+        <span class="key">Ctrl</span>
+        <span class="key">A</span>
+        <span>opens tab search</span>
+      </div>
+    </div>
+
+    <div class="browser-window">
+      <div class="window-top">
+        <div class="traffic"><span></span><span></span><span></span></div>
+        <div class="toolbar">
+          <div class="address" id="address">developer.mozilla.org/en-US/docs</div>
+          <div class="extension-button"><img src="../icons/icon-32.png" alt=""></div>
+        </div>
+      </div>
+      <div class="page-fill">
+        <div class="fake-card"></div>
+        <div class="fake-line mid"></div>
+        <div class="fake-line"></div>
+        <div class="fake-line short"></div>
+      </div>
+    </div>
+
+    <div class="popup-wrap" id="popup-wrap">
+      <main class="tab-search-panel" aria-label="Chrome Tab Search">
+        <header class="search-header">
+          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m21 21-4.35-4.35m2.1-5.15a7.25 7.25 0 1 1-14.5 0 7.25 7.25 0 0 1 14.5 0Z"></path>
+          </svg>
+          <input id="search-input" type="search" value="docs" aria-label="Search tabs">
+          <span id="shortcut-hint" class="shortcut-hint" aria-hidden="true">Cmd Ctrl A</span>
+        </header>
+        <section class="results" role="listbox" aria-label="Tab search results">
+          <section class="section">
+            <div class="section-title">Open Tabs</div>
+            <div class="rows" id="open-rows"></div>
+          </section>
+          <section class="section" id="closed-section"></section>
+        </section>
+      </main>
+    </div>
+
+    <div class="settings-frame" id="settings-frame" hidden>
+      <div class="settings-surface">
+        <div class="settings-card">
+          <h2>Extension Settings</h2>
+          <p>Set the popup shortcut and tune the popup width and scale.</p>
+
+          <div class="field">
+            <span class="label">Open Chrome Tab Search</span>
+            <div class="shortcut-control">
+              <div class="shortcut-box">
+                <span class="badge">Cmd</span><span class="plus">+</span>
+                <span class="badge">Ctrl</span><span class="plus">+</span>
+                <span class="badge">A</span>
+              </div>
+              <div class="button">Record</div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="field">
+            <span class="label">Popup width</span>
+            <div class="range-row">
+              <div class="slider"></div>
+              <div class="number">420</div>
+              <span class="unit">px</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="label">Popup scale</span>
+            <div class="range-row">
+              <div class="slider"></div>
+              <div class="number">110%</div>
+              <span class="unit">size</span>
+            </div>
+          </div>
+
+          <div class="button" style="width: 178px; height: 40px;">Reset Appearance</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const now = Date.now();
+    const groups = {
+      Work: "#8ab4f8",
+      Research: "#81c995",
+      Store: "#ff8bcb",
+      Release: "#fcad70"
+    };
+
+    const data = {
+      search: {
+        className: "search",
+        query: "docs",
+        address: "developer.mozilla.org/en-US/docs",
+        headline: "Find any tab instantly",
+        supporting: "A compact Chrome-style popup for jumping across open Firefox tabs by title, URL, or group.",
+        open: [
+          row("open-1", "MDN Web Docs - tabs API", "developer.mozilla.org", "Research", now - 2 * 60000, true, true),
+          row("open-2", "Chrome Tab Search - GitHub", "github.com", "Work", now - 4 * 60000, true),
+          row("open-3", "Firefox Add-ons Developer Hub", "addons.mozilla.org", "Store", now - 9 * 60000, true),
+          row("open-4", "WebExtension manifest reference", "developer.mozilla.org", "Research", now - 13 * 60000, true),
+          row("open-5", "Release checklist", "notion.so", "Release", now - 18 * 60000, true)
+        ],
+        closed: []
+      },
+      restore: {
+        className: "restore",
+        query: "",
+        address: "addons.mozilla.org/developers",
+        headline: "Switch, close, or restore",
+        supporting: "Close noisy tabs from the list, or bring recently closed tabs and windows back with one click.",
+        open: [
+          row("open-1", "Firefox Add-ons Developer Hub", "addons.mozilla.org", "Store", now - 1 * 60000, true),
+          row("open-2", "Chrome Tab Search - Pull request", "github.com", "Release", now - 5 * 60000, true, false, true),
+          row("open-3", "Privacy policy draft", "docs.google.com", "Work", now - 12 * 60000, true),
+          row("open-4", "Extension icon preview", "figma.com", "Work", now - 20 * 60000, true)
+        ],
+        closed: [
+          row("closed-1", "AMO listing copy", "addons.mozilla.org", "Store", now - 11 * 60000, false),
+          row("closed-2", "Window with 7 tabs", "github.com and 6 more", "Release", now - 38 * 60000, false),
+          row("closed-3", "MDN sessions.restore()", "developer.mozilla.org", "Research", now - 51 * 60000, false)
+        ]
+      },
+      settings: {
+        className: "settings",
+        query: "",
+        address: "about:addons",
+        headline: "Make it fit your flow",
+        supporting: "Pick your shortcut, widen the popup, and scale the rows for a comfortable Firefox setup.",
+        open: [],
+        closed: []
+      }
+    };
+
+    function row(id, title, meta, group, time, open, selected = false, closeVisible = false) {
+      return { id, title, meta, group, time, open, selected, closeVisible };
+    }
+
+    function formatTime(time) {
+      const minutes = Math.round((Date.now() - time) / 60000);
+      if (minutes < 60) return `${minutes} mins ago`;
+      const hours = Math.floor(minutes / 60);
+      return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+    }
+
+    function iconSvg(closed) {
+      if (closed) return '<svg class="fallback-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 7h10v10H7zM9 7V5h6v2"></path></svg>';
+      return '<svg class="fallback-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 8h4v4H7zM13 8h4v4h-4zM7 14h4v2H7zM13 14h4v2h-4z"></path></svg>';
+    }
+
+    function closeIcon() {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>';
+    }
+
+    function chevronIcon() {
+      return '<svg class="section-title-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+    }
+
+    function renderRow(item) {
+      const classes = ["tab-row"];
+      if (item.selected) classes.push("is-selected");
+      const group = item.group ? `
+        <span class="group-chip" style="--group-color: ${groups[item.group] || "#9aa0a6"}">
+          <span class="group-dot"></span>
+          <span class="group-name">${item.group}</span>
+        </span>
+        <span class="meta-separator">•</span>` : "";
+      const action = item.open
+        ? `<span class="row-action${item.closeVisible ? " force-visible" : ""}" title="Close tab" aria-label="Close ${item.title}">${closeIcon()}</span>`
+        : '<span class="row-spacer"></span>';
+
+      return `
+        <div class="${classes.join(" ")}" role="option" aria-selected="${item.selected ? "true" : "false"}">
+          <span class="favicon-shell">${iconSvg(!item.open)}</span>
+          <span class="tab-copy">
+            <span class="tab-title">${item.title}</span>
+            <span class="tab-meta">${group}<span class="meta-text">${item.meta}</span><span class="meta-separator">•</span><span class="meta-text">${formatTime(item.time)}</span></span>
+          </span>
+          ${action}
+        </div>`;
+    }
+
+    function applyShot() {
+      const params = new URLSearchParams(location.search);
+      const name = params.get("shot") || "search";
+      const shot = data[name] || data.search;
+      const root = document.getElementById("shot");
+
+      root.className = `shot ${shot.className}`;
+      document.getElementById("headline").textContent = shot.headline;
+      document.getElementById("supporting").textContent = shot.supporting;
+      document.getElementById("address").textContent = shot.address;
+      document.getElementById("search-input").value = shot.query;
+
+      document.getElementById("open-rows").innerHTML = shot.open.map(renderRow).join("");
+      const closed = document.getElementById("closed-section");
+      closed.innerHTML = "";
+      if (shot.closed.length) {
+        closed.innerHTML = `
+          <button class="section-title" type="button"><span>Recently Closed</span>${chevronIcon()}</button>
+          <div class="rows">${shot.closed.map((item) => renderRow({ ...item, open: false })).join("")}</div>`;
+      }
+
+      document.getElementById("popup-wrap").hidden = name === "settings";
+      document.getElementById("settings-frame").hidden = name !== "settings";
+      document.getElementById("keyline").hidden = name === "settings";
+    }
+
+    applyShot();
+  </script>
+</body>
+</html>

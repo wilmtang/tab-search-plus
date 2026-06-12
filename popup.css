@@ -14,8 +14,9 @@
   --row-icon-column: calc(56px * var(--popup-scale));
   --row-action-size: calc(24px * var(--popup-scale));
   --row-icon-shell: calc(40px * var(--popup-scale));
-  --row-icon-size: calc(20px * var(--popup-scale));
-  --fallback-icon-size: calc(18px * var(--popup-scale));
+  --row-icon-size: calc(16px * var(--popup-scale));
+  --fallback-icon-size: calc(16px * var(--popup-scale));
+  --media-icon-size: calc(14px * var(--popup-scale));
   --title-size: calc(13px * var(--popup-scale));
   --title-line-height: calc(16px * var(--popup-scale));
   --meta-size: calc(12px * var(--popup-scale));
@@ -247,10 +248,10 @@ button.section-title:focus-visible {
   place-items: center;
   width: var(--row-icon-shell);
   height: var(--row-icon-shell);
-  border-radius: var(--popup-radius);
-  background: var(--icon-tile);
+  border-radius: 0;
+  background: transparent;
   color: var(--icon-fg);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .favicon-shell img {
@@ -278,13 +279,39 @@ button.section-title:focus-visible {
 }
 
 .tab-title {
+  display: flex;
+  align-items: center;
+  gap: calc(5px * var(--popup-scale));
+  min-width: 0;
   overflow: hidden;
   color: inherit;
   font-size: var(--title-size);
-  font-weight: 600;
+  font-weight: 500;
   line-height: var(--title-line-height);
+  white-space: nowrap;
+}
+
+.tab-title-text {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.search-highlight-hit {
+  font-weight: 700;
+}
+
+.media-alert-icon {
+  flex: 0 0 auto;
+  width: var(--media-icon-size);
+  height: var(--media-icon-size);
+  color: var(--quiet);
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .tab-meta {
@@ -334,6 +361,7 @@ button.section-title:focus-visible {
 .group-name {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pin-mark {

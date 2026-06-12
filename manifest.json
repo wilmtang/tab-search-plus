@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Chrome Tab Search",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Chrome-style tab search for Firefox with tab switching, tab closing, recently closed restore, and tab group indicators.",
   "icons": {
     "16": "icons/icon-16.png",
