@@ -6,15 +6,27 @@
 [![Firefox Extension](https://img.shields.io/github/actions/workflow/status/wilmtang/chrome-tab-search/firefox-extension.yml?branch=main&label=firefox%20extension)](https://github.com/wilmtang/chrome-tab-search/actions/workflows/firefox-extension.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A Firefox extension that recreates Chrome's Tab Search popup: search open tabs, jump to a result, spot tabs that are playing audio, close an open tab from the list, restore recently closed tabs or windows, and see tab group color/name indicators.
+A Firefox extension that recreates Chrome's Tab Search popup for Firefox: search open tabs, jump to a result, spot tabs playing audio, close tabs from the list, restore recently closed tabs or windows, and see tab group indicators.
 
-## Why This Plugin
+## Why
 
 Chrome Tab Search is for users who like Firefox but want the exact same feel and workflow of Chrome's built-in Tab Search. If your muscle memory expects one compact popup where you can type part of a tab title, jump straight to it, find the tab that is playing audio, close noisy tabs, or bring back something you just closed, this extension is meant to make Firefox feel familiar again.
 
 The goal is intentionally narrow: make tab search behave like the Chrome feature people already know, while using the Firefox WebExtension APIs available today.
 
-## Features
+## Screenshots
+
+These store screenshots are generated from [`store-screenshots/scene.html`](store-screenshots/scene.html).
+
+| Search open tabs | Close and restore tabs |
+| --- | --- |
+| ![Search open tabs](store-screenshots/01-search-tabs.png) | ![Close and restore tabs](store-screenshots/02-close-restore-tabs.png) |
+
+| Customize shortcut and size | Find tabs playing audio |
+| --- | --- |
+| ![Customize shortcut and size](store-screenshots/03-customize-shortcut-size.png) | ![Find tabs playing audio](store-screenshots/04-audio-video-tabs.png) |
+
+## Highlights
 
 - Chrome-style popup with dark-mode support.
 - Chrome-matched MRU ordering, with the current focused-window tab moved to the bottom so Enter quickly switches to another tab.
@@ -27,6 +39,12 @@ The goal is intentionally narrow: make tab search behave like the Chrome feature
 - Show tab group indicators using Firefox's `tabGroups` API when available.
 - Customizable shortcut from the options page. Default is `Cmd + Ctrl + A` on macOS and `Ctrl + Alt + A` on Windows/Linux.
 
+## Shortcut
+
+The shortcut opens the same popup as the toolbar button. Change it from the extension options page or Firefox's built-in extension shortcut manager.
+
+Firefox does not let extensions override reserved browser shortcuts. In particular, `Cmd + Shift + A` is already owned by Firefox on macOS, so this extension cannot claim it. The default shortcut is `Cmd + Ctrl + A` on macOS and `Ctrl + Alt + A` on Windows/Linux.
+
 ## Local Testing
 
 1. Open Firefox and go to `about:debugging`.
@@ -36,12 +54,6 @@ The goal is intentionally narrow: make tab search behave like the Chrome feature
 5. Click the toolbar button or press the configured shortcut.
 
 Temporary add-ons are removed when Firefox restarts.
-
-## Shortcut
-
-The shortcut is implemented with Firefox's `_execute_browser_action` command, so it opens the exact same popup as the toolbar button. You can change it from the extension options page or Firefox's built-in extension shortcut manager.
-
-Firefox does not let extensions override reserved browser shortcuts. In particular, `Cmd + Shift + A` is already owned by Firefox on macOS, so this extension cannot claim it. The default shortcut is `Cmd + Ctrl + A` on macOS and `Ctrl + Alt + A` on Windows/Linux.
 
 ## Limitations
 
